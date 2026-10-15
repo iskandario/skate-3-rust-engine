@@ -100,7 +100,7 @@ pub(crate) struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AnimationStatus>()
-            .add_systems(Update, (disable_skater_culling, bind, present, debug_unskin_skater).chain().in_set(FrameSet::Animation));
+            .add_systems(Update, (disable_skater_culling, bind, present).chain().in_set(FrameSet::Animation));
     }
 }
 fn disable_skater_culling(
@@ -292,19 +292,5 @@ mod online_swap_tests {
         for (entity,t) in replacement.pose_transforms(&next){*world.get_mut::<Transform>(entity).unwrap()=t;}
         assert_ne!(world.get::<Transform>(roots[0].1),world.get::<Transform>(roots[1].1));
         assert_ne!(world.get::<Transform>(roots[0].2),world.get::<Transform>(roots[1].2));
-    }
-}
-
-// TEMPORARY DIAGNOSTIC: bypass GPU skinning on player meshes.
-fn debug_unskin_skater(
-    mut commands: Commands,
-    skins: Query<Entity, With<SkinnedMesh>>,
-    parents: Query<&ChildOf>,
-    roots: Query<Entity, With<PlayerRoot>>,
-) {
-    for entity in &skins {
-        if parents.iter_ancestors(entity).any(|ancestor| roots.contains(ancestor)) {
-            commands.entity(entity).remove::<SkinnedMesh>();
-        }
     }
 }

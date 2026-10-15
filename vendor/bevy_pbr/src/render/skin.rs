@@ -19,7 +19,7 @@ use bevy_render::{
 use bevy_transform::prelude::GlobalTransform;
 use offset_allocator::{Allocation, Allocator};
 use smallvec::SmallVec;
-use tracing::error;
+use tracing::{error, info};
 
 /// Maximum number of joints supported for skinned meshes.
 ///
@@ -193,7 +193,43 @@ impl SkinUniformInfo {
 /// storage buffers aren't supported on the current platform.
 pub fn skins_use_uniform_buffers(limits: &WgpuLimits) -> bool {
     static SKINS_USE_UNIFORM_BUFFERS: OnceLock<bool> = OnceLock::new();
-    *SKINS_USE_UNIFORM_BUFFERS.get_or_init(|| limits.max_storage_buffers_per_shader_stage == 0)
+    *SKINS_USE_UNIFORM_BUFFERS.get_or_init(|| {
+        // This game's Windows renderer is pinned to DX12. Force the existing
+        // uniform path to isolate D3DMetal's translated structured-buffer
+        // skinning from the already validated CPU pose and inverse bindposes.
+        // This keeps the same SkinnedMesh component and a stable bind-group
+        // layout for the prepass and shadow pipelines.
+        let use_uniforms = needs_uniform_skinning(
+            limits.max_storage_buffers_per_shader_stage,
+            cfg!(target_os = "windows"),
+        );
+        info!(
+            "SKINNING_BUFFER mode={} windows_workaround={}",
+            if use_uniforms { "uniform" } else { "storage" },
+            cfg!(target_os = "windows")
+        );
+        use_uniforms
+    })
+}
+
+fn needs_uniform_skinning(max_storage_buffers_per_shader_stage: u32, windows: bool) -> bool {
+    windows || max_storage_buffers_per_shader_stage == 0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::needs_uniform_skinning;
+
+    #[test]
+    fn windows_uses_uniform_skinning_even_when_storage_buffers_are_reported() {
+        assert!(needs_uniform_skinning(8, true));
+    }
+
+    #[test]
+    fn other_platforms_keep_the_device_limit_based_selection() {
+        assert!(needs_uniform_skinning(0, false));
+        assert!(!needs_uniform_skinning(8, false));
+    }
 }
 
 /// Uploads the buffers containing the joints to the GPU.
