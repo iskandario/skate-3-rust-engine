@@ -214,6 +214,10 @@ fn present(
     if !animation.ready {
         return;
     }
+
+    // TEMPORARY DIAGNOSTIC: keep the imported skeleton in its bind pose.
+    return;
+
     // Existing GLB was exported through Blender: its bone-local axes are
     // rotated -90 degrees about X relative to the native frames. Both files'
     // world positions are Y-up. This is a skin basis change, not a physics turn.
