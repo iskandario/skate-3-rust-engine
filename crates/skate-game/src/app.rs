@@ -76,7 +76,7 @@ pub(crate) fn build(
             })
             .set(RenderPlugin {
                 render_creation: RenderCreation::Automatic(WgpuSettings {
-                    backends: Some(Backends::VULKAN),
+                    backends: Some(Backends::DX12),
                     // Existing machine's validation layer rejects wgpu atomic shaders.
                     // This workaround belongs only to the rendering adapter.
                     instance_flags: InstanceFlags::empty(),
