@@ -233,7 +233,16 @@ fn present(
             } else { global })
         };
         if let Ok(mut transform) = nodes.get_mut(binding.entity) {
-            *transform = crate::presentation::blend(local(previous), local(current), alpha);
+            let candidate = crate::presentation::blend(local(previous), local(current), alpha);
+
+            // Reject invalid joint transforms before sending them to the GPU.
+            if candidate.translation.is_finite()
+                && candidate.rotation.is_finite()
+                && candidate.scale.is_finite()
+                && candidate.scale.min_element() > 0.00001
+            {
+                *transform = candidate;
+            }
         }
     }
 }
