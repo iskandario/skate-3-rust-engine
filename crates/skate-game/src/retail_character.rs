@@ -223,8 +223,10 @@ fn spawn_shadow_sources(commands: &mut Commands, light: Vec3) {
         },
         Transform::default().looking_to(-light, Vec3::Y),
         bevy::light::CascadeShadowConfigBuilder {
+            // On Windows one cascade keeps nearby character/PBR shadows while
+            // avoiding four full scene passes through D3DMetal every frame.
+            num_cascades: scene_shadow_cascade_count(),
             maximum_distance: 100.,
-            first_cascade_far_bound: 10.,
             ..default()
         }
         .build(),
@@ -252,6 +254,14 @@ fn spawn_shadow_sources(commands: &mut Commands, light: Vec3) {
         }
         .build(),
     ));
+}
+
+const fn scene_shadow_cascade_count() -> usize {
+    if cfg!(target_os = "windows") {
+        1
+    } else {
+        4
+    }
 }
 
 fn bind(
@@ -670,6 +680,8 @@ mod tests {
             } else {
                 assert_eq!(light.illuminance, 11_000.);
                 assert!(layers.intersects(&terrain));
+                assert_eq!(cascades.bounds.len(), scene_shadow_cascade_count());
+                assert_eq!(cascades.bounds.last(), Some(&100.));
                 character_sources += 1;
             }
         }

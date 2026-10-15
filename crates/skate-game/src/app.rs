@@ -7,6 +7,7 @@ use crate::{
     verification, world,
 };
 use bevy::{
+    light::DirectionalLightShadowMap,
     prelude::*,
     render::{
         RenderPlugin,
@@ -14,6 +15,17 @@ use bevy::{
     },
 };
 use skate_data::GameAssets;
+
+/// D3DMetal pays heavily for every directional-shadow cascade. The Windows
+/// build is the CrossOver target, where a 1024 map is ample for the game's
+/// low-resolution 3D target and avoids rendering several 2048 maps per frame.
+const fn directional_shadow_map_size() -> usize {
+    if cfg!(target_os = "windows") {
+        1024
+    } else {
+        2048
+    }
+}
 
 /// Bevy's defaults plus, on request, the query features that make
 /// `RenderDiagnosticsPlugin` report per-pass GPU time.
@@ -92,6 +104,9 @@ pub(crate) fn build(
             .disable::<bevy::gilrs::GilrsPlugin>(),
     )
     .insert_resource(bevy::winit::WinitSettings {focused_mode:bevy::winit::UpdateMode::Continuous,unfocused_mode:bevy::winit::UpdateMode::Continuous})
+    .insert_resource(DirectionalLightShadowMap {
+        size: directional_shadow_map_size(),
+    })
     .insert_resource(config)
     .insert_resource(crate::retail_render::RetailScene(retail_scene))
     .insert_resource(assets::AssetManifest(manifest))
